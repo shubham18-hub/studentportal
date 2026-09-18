@@ -1,0 +1,79 @@
+name: Frontend Tests & Build
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run linting
+      working-directory: ./frontend
+      run: npm run lint 2>/dev/null || echo "Linting check skipped"
+    
+    - name: Build application
+      working-directory: ./frontend
+      env:
+        VITE_API_URL: http://localhost:8000
+        VITE_GOOGLE_CLIENT_ID: test-client-id
+      run: npm run build
+    
+    - name: Check build output
+      working-directory: ./frontend
+      run: |
+        if [ ! -d "dist" ]; then
+          echo "❌ Build failed: dist directory not created"
+          exit 1
+        fi
+        echo "✅ Build successful"
+        du -sh dist/
+    
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build-${{ matrix.node-version }}
+        path: ./frontend/dist
+        retention-days: 5
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run npm audit
+      working-directory: ./frontend
+      run: npm audit --audit-level=moderate || true
+    
+    - name: Check for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./frontend
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD

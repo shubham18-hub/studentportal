@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: ecell-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-ecelluser}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-ecellpass}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ecell-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ecell-backend
+    environment:
+      MONGODB_URI: mongodb://${MONGO_USER:-ecelluser}:${MONGO_PASSWORD:-ecellpass}@mongodb:27017/ecell?authSource=admin
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ecell.com}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      ALLOWED_DOMAINS: ${ALLOWED_DOMAINS:-klecba.edu.in,kle.ac.in,klecba.edu}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecell-network
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ecell-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - ecell-network
+    volumes:
+      - ./frontend/src:/app/src
+
+volumes:
+  mongo_data:
+
+networks:
+  ecell-network:
+    driver: bridge

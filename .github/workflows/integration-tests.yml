@@ -1,0 +1,95 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:7.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpass
+        options: >-
+          --health-cmd mongosh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+    
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Configure backend environment
+      working-directory: ./backend
+      run: |
+        cat > .env << EOF
+        MONGODB_URI=mongodb://testuser:testpass@localhost:27017/ecell_test?authSource=admin
+        SECRET_KEY=test-secret-key-32-characters-long-1234
+        GOOGLE_CLIENT_ID=test-client-id
+        GOOGLE_CLIENT_SECRET=test-client-secret
+        ADMIN_EMAIL=admin@test.com
+        ADMIN_PASSWORD_HASH=\$2b\$12\$R9h7cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ee7KK/U0XxsqgADO
+        ALLOWED_DOMAINS=test.com,example.com
+        FRONTEND_URL=http://localhost:3000
+        ENVIRONMENT=testing
+        EOF
+    
+    - name: Start backend
+      working-directory: ./backend
+      run: |
+        nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+        sleep 5
+        curl -f http://localhost:8000/health || (cat backend.log && exit 1)
+    
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run integration tests
+      working-directory: ./backend
+      run: |
+        pytest tests/test_auth.py -v
+        pytest tests/test_security.py -v
+        pytest tests/test_scalability.py -v
+    
+    - name: Test API endpoints
+      run: |
+        echo "Testing health check..."
+        curl -f http://localhost:8000/health
+        
+        echo -e "\nTesting root endpoint..."
+        curl -f http://localhost:8000/
+        
+        echo -e "\nTesting API docs..."
+        curl -f http://localhost:8000/docs
+    
+    - name: Upload backend logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-logs
+        path: ./backend/backend.log

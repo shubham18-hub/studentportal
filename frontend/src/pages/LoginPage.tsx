@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { Mail, Lock, AlertCircle } from 'lucide-react'
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => setError('Google login failed')}
-                  theme="dark"
+                  theme="filled_black"
                 />
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-500 text-center mt-4">

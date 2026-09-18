@@ -1,6 +1,5 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Award, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react'
+import { Calendar, Award, ChevronRight, AlertCircle } from 'lucide-react'
 import { Task } from '../types'
 
 interface TaskCardProps {

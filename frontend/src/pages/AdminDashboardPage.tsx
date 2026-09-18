@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, Plus, Loader, AlertCircle } from 'lucide-react'
+import { Plus, Loader, AlertCircle } from 'lucide-react'
 import { TaskCard } from '../components/TaskCard'
 import { tasksAPI } from '../api/tasks'
 import { Task, Analytics } from '../types'

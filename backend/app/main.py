@@ -114,19 +114,38 @@ async def general_exception_handler(request, exc):
 # Lifecycle events
 @app.on_event("startup")
 async def startup_event():
-    """Initialize on startup."""
+    """Initialize on startup.
+    
+    Gracefully handles MongoDB connection failures by allowing the app to start
+    in "degraded mode" if MongoDB is unavailable. This matches production best
+    practices where services should start even if dependencies are temporarily unavailable.
+    """
     logger.info("Starting up E-Cell Task Portal API")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"PII Logging: {'DISABLED' if not settings.log_user_pii else 'ENABLED'}")
     logger.info("Rate limiting: ENABLED for 1k+ students")
-    await connect_to_mongo()
+    
+    # Try to connect to MongoDB, but don't crash if it's unavailable
+    try:
+        await connect_to_mongo()
+        logger.info("MongoDB connection initialized successfully")
+    except Exception as e:
+        logger.warning(f"MongoDB connection failed during startup: {e}")
+        logger.warning("App is starting in DEGRADED MODE - health check will pass but database requests will fail")
+    
     logger.info("Application startup complete")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Clean up on shutdown."""
+    """Clean up on shutdown.
+    
+    Safely closes MongoDB connection even if it never fully connected.
+    """
     logger.info("Shutting down E-Cell Task Portal API")
-    await close_mongo()
+    try:
+        await close_mongo()
+    except Exception as e:
+        logger.warning(f"Error during shutdown: {e}")
     logger.info("Application shutdown complete")
 
 if __name__ == "__main__":

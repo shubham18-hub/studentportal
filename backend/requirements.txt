@@ -14,7 +14,6 @@ google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
 PyJWT==2.14.0
 aiofiles==23.2.1
-fastapi-limiter2==0.1.5
 pytest==7.4.3
 pytest-asyncio==0.21.1
 slowapi==0.1.9

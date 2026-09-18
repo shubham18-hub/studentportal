@@ -74,8 +74,9 @@ This document covers deploying the E-Cell Task Portal to production using Render
 1. **Backend Service**:
    - Click "New +" > "Web Service"
    - Connect GitHub repository
-   - Set build command: `pip install -r backend/requirements.txt`
+   - Set build command: `cd backend && pip install -r requirements.txt`
    - Set start command: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Set health check path: `/health`
    - Add environment variables (see above)
    - Deploy
 

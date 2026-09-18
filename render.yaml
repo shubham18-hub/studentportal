@@ -2,11 +2,13 @@ services:
   - type: web
     name: ecell-backend
     env: python
-    runtime: python-3.11.7
+    runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
       - key: MONGODB_URI
         sync: false
       - key: SECRET_KEY
@@ -31,7 +33,7 @@ services:
     env: node
     plan: free
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npm run preview
+    startCommand: cd frontend && npm run preview -- --host 0.0.0.0 --port $PORT
     envVars:
       - key: VITE_API_URL
         sync: false

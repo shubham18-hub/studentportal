@@ -83,7 +83,7 @@ This document covers deploying the E-Cell Task Portal to production using Render
    - Click "New +" > "Web Service"
    - Connect GitHub repository
    - Set build command: `cd frontend && npm install && npm run build`
-   - Set start command: `cd frontend && npm run preview`
+   - Set start command: `cd frontend && npm run preview -- --host 0.0.0.0 --port $PORT`
    - Add environment variables:
      - `VITE_API_URL`: Backend service URL (e.g., https://ecell-backend.onrender.com)
      - `VITE_GOOGLE_CLIENT_ID`: Same as backend

@@ -2,6 +2,7 @@ services:
   - type: web
     name: ecell-backend
     env: python
+    runtime: python-3.11.7
     plan: free
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT

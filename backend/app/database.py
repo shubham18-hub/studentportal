@@ -12,8 +12,11 @@ _mongo_connected: bool = False
 async def connect_to_mongo():
     """Connect to MongoDB with pooling for 1k+ students.
     
-    Can be called multiple times safely - will only connect once.
-    Logs failures but doesn't crash the app (graceful degradation).
+    Idempotent - can be called multiple times safely.
+    Only connects once. Subsequent calls are no-ops.
+    Safe to call even if already connected or if connection is in progress.
+    
+    This is designed for lazy connection - called on first request, not at startup.
     """
     global client, db, _mongo_connected
     
@@ -21,6 +24,19 @@ async def connect_to_mongo():
     if _mongo_connected and client is not None and db is not None:
         logger.debug("MongoDB already connected, skipping reconnection")
         return
+    
+    # If client exists but not marked as connected, try to use it
+    if client is not None and not _mongo_connected:
+        logger.debug("MongoDB client exists but not marked as connected, attempting reconnection verification...")
+        try:
+            await asyncio.wait_for(db.command("ping"), timeout=2.0)
+            _mongo_connected = True
+            logger.info("MongoDB reconnection verified")
+            return
+        except Exception:
+            logger.debug("MongoDB reconnection verification failed, will attempt fresh connection")
+            client = None
+            db = None
     
     try:
         logger.info("Attempting to connect to MongoDB...")
@@ -47,16 +63,16 @@ async def connect_to_mongo():
             _mongo_connected = True
             logger.info("Connected to MongoDB successfully with connection pooling")
         except asyncio.TimeoutError:
-            logger.warning("MongoDB ping timed out, but connection object created. Will retry on first request.")
+            logger.warning("MongoDB ping timed out, but connection object created. Will use connection anyway.")
             _mongo_connected = True
             
     except asyncio.TimeoutError as e:
-        logger.warning(f"MongoDB connection timeout (this is normal during startup delays): {e}")
-        logger.warning("App starting in DEGRADED MODE - MongoDB unavailable. Requests will fail with database errors.")
+        logger.warning(f"MongoDB connection timeout: {e}")
+        logger.warning("Connection will be retried on next request.")
         _mongo_connected = False
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
-        logger.warning("App starting in DEGRADED MODE - MongoDB unavailable. Requests will fail with database errors.")
+        logger.warning("Connection will be retried on next request.")
         _mongo_connected = False
 
 async def create_indexes():
@@ -107,15 +123,27 @@ async def close_mongo():
         except Exception as e:
             logger.warning(f"Error closing MongoDB connection: {e}")
 
-def get_db() -> AsyncDatabase:
+async def get_db() -> AsyncDatabase:
     """Get MongoDB database instance.
     
-    Raises RuntimeError if database is not connected.
-    Returns the db connection if available (even in degraded mode).
+    Lazily attempts to connect if not already connected.
+    On first call, will attempt to establish MongoDB connection.
+    Subsequent calls will reuse the connection.
+    
+    Returns the db connection if available.
+    Raises RuntimeError if database cannot be connected.
     """
-    global db
-    if db is None:
-        raise RuntimeError("Database not connected - service is in degraded mode")
+    global db, _mongo_connected
+    
+    # If not connected, try to connect now (lazy connection)
+    if not _mongo_connected:
+        logger.info("First database request - attempting lazy MongoDB connection...")
+        await connect_to_mongo()
+    
+    # If still not connected after attempt, raise error
+    if db is None or not _mongo_connected:
+        raise RuntimeError("Database not connected - MongoDB unavailable")
+    
     return db
 
 def is_mongo_connected() -> bool:

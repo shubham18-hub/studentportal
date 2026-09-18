@@ -116,23 +116,18 @@ async def general_exception_handler(request, exc):
 async def startup_event():
     """Initialize on startup.
     
-    Gracefully handles MongoDB connection failures by allowing the app to start
-    in "degraded mode" if MongoDB is unavailable. This matches production best
-    practices where services should start even if dependencies are temporarily unavailable.
+    Does NOT connect to MongoDB at startup. MongoDB connection is deferred until
+    the first request that needs it (lazy connection). This allows the app to start
+    and pass health checks even if MongoDB is temporarily unavailable.
+    
+    This matches production best practices where services should start even if
+    dependencies are temporarily unavailable.
     """
     logger.info("Starting up E-Cell Task Portal API")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"PII Logging: {'DISABLED' if not settings.log_user_pii else 'ENABLED'}")
     logger.info("Rate limiting: ENABLED for 1k+ students")
-    
-    # Try to connect to MongoDB, but don't crash if it's unavailable
-    try:
-        await connect_to_mongo()
-        logger.info("MongoDB connection initialized successfully")
-    except Exception as e:
-        logger.warning(f"MongoDB connection failed during startup: {e}")
-        logger.warning("App is starting in DEGRADED MODE - health check will pass but database requests will fail")
-    
+    logger.info("MongoDB connection: DEFERRED (lazy) - will connect on first request")
     logger.info("Application startup complete")
 
 @app.on_event("shutdown")

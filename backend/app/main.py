@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZIPMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 import logging
@@ -33,10 +32,6 @@ app = FastAPI(
     docs_url="/docs" if settings.environment == "development" else None,
     redoc_url="/redoc" if settings.environment == "development" else None,
 )
-
-# Security: HTTPS redirect in production
-if settings.enable_https_only:
-    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Middleware - Security Headers
 app.add_middleware(SecurityHeadersMiddleware)

@@ -1,12 +1,12 @@
-from motor.motor_asyncio import AsyncClient, AsyncDatabase
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.config import settings
 import logging
 import asyncio
 
 logger = logging.getLogger(__name__)
 
-client: AsyncClient = None
-db: AsyncDatabase = None
+client: AsyncIOMotorClient = None
+db: AsyncIOMotorDatabase = None
 _mongo_connected: bool = False
 
 async def connect_to_mongo():
@@ -41,7 +41,7 @@ async def connect_to_mongo():
     try:
         logger.info("Attempting to connect to MongoDB...")
         # Connection pool settings optimized for 1k students
-        client = AsyncClient(
+        client = AsyncIOMotorClient(
             settings.mongodb_uri,
             maxPoolSize=settings.mongodb_pool_size,
             minPoolSize=10,
@@ -123,7 +123,7 @@ async def close_mongo():
         except Exception as e:
             logger.warning(f"Error closing MongoDB connection: {e}")
 
-async def get_db() -> AsyncDatabase:
+async def get_db() -> AsyncIOMotorDatabase:
     """Get MongoDB database instance.
     
     Lazily attempts to connect if not already connected.

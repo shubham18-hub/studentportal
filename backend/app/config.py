@@ -1,8 +1,9 @@
-from pydantic import BaseSettings 
-from typing import List 
-import os 
- 
-class Settings(BaseSettings): 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List
+import os
+
+
+class Settings(BaseSettings):
     # Database 
     mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://ecelluser:ecellpass@localhost:27017/ecell?authSource=admin") 
     mongodb_pool_size: int = 50 
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379") 
     enable_redis: bool = os.getenv("ENABLE_REDIS", "false").lower() == "true" 
  
-    class Config: 
-        env_file = ".env" 
- 
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+
 settings = Settings()
